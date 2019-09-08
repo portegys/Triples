@@ -1,0 +1,670 @@
+C*******************************************************************
+C
+C THIS PROGRAM SERVES TO MONITOR A CONTEST BETWEEN TWO 
+C TRIPLES-PLAYING SUBROUTINES NAMED PLAYRA AND PLAYRB, WHICH
+C ARE ALTERNATELY CALLED TO MAKE A MOVE IN THE FOLLOWING WAY:
+C
+C     CALL PLAYRA(POSA,POSB,RULTAB,POS)
+C
+C WHERE POSA IS THE POSITION OF PLAYER A, POSB IS THE POSTION
+C OF PLAYER B, RULTAB IS A TABLE OF LEGAL MOVE TRIPLETS, AND
+C POS IS THE NEW POSITION RETURNED BY THE CALLED SUBROUTINE.
+C
+C THE USER IS PROMPTED FOR A CODE USED TO COMPUTE A RULE TABLE,
+C AND FOR WHICH OF THE TWO PLAYERS GOES FIRST.
+C
+C THE OUTPUT OF THIS PROGRAM CONSISTS OF AN IMAGE OF THE BOARD
+C AFTER EACH MOVE.  A MESSAGE IS ALSO SENT AT THE END OF THE GAME
+C INDICATING THE OUTCOME OF THE GAME.
+C
+C*******************************************************************
+      COMMON ALOCX(9),ALOCY(9),BLOCX(9),BLOCY(9),                          LV023
+     1RULTAB(5,5,6),TURN,LVLPTR,VALUE(9),VALDEF(9),
+     2MOVNDX(9),MOVSAV(9),MOVCNT(9),DEADLK,LVLIM
+      INTEGER ALOCX,ALOCY,BLOCX,BLOCY
+      INTEGER RULTAB,TURN,LVLPTR,VALDEF
+      INTEGER MOVNDX,MOVSAV,MOVCNT,DEADLK
+      REAL VALUE
+      INTEGER TFLAG,SEQ,I,J,AX,AY,Q,R,LIMIT,POSA,POSB,POS
+      INTEGER COL1,COL2,ZERO,LVLIM
+      INTEGER VECTB(5,51),SHIFT
+      DATA ZERO/'0'/
+C
+C PROMPT FOR DIFFICULTY LEVEL AND GAME NUMBER; INITIALIZE THE RULE
+C TABLE.  PROMPT FOR TURN.
+C     CALL CLEAR
+      WRITE (6,2)
+2     FORMAT (1H ,23HWELCOME TO TRIPLES WAR!)
+      LVLIM = 9
+      DEADLK = 0
+      WRITE (6,4)
+4     FORMAT (1H ,32HENTER A GAME NUMBER FROM 1 TO 23)
+      READ (5,20) COL1,COL2
+      CALL GAMNUM(COL1,COL2,SHIFT)
+      CALL INIT(VECTB,SHIFT)
+      WRITE (6,103)
+103   FORMAT (1H ,13HGAME VECTORS:)
+      Q = 5
+104   IF (Q.LT.1) GO TO 105
+      WRITE (6,81) (VECTB(Q,R),R=1,51)
+      Q = Q - 1
+      GO TO 104
+105   TFLAG = 0
+      LIMIT = 0
+      SEQ = 1
+      ALOCX(1) = 1
+      ALOCY(1) = 5
+      BLOCX(1) = 5
+      BLOCY(1) = 5
+      AX = 1
+      AY = 5
+      Q = 1
+      R = 1
+      WRITE (6,10)
+10    FORMAT (1H ,45HENTER 0 IF PLAYER A TO GO FIRST, ELSE ENTER 1)
+      READ (5,15) SEQ
+C     CALL CLEAR
+15    FORMAT (A1)
+C
+C IF USER WISHES FIRST TURN, READ MOVE INFORMATION.
+      IF (SEQ.NE.ZERO) GO TO 47
+      POSA = 20
+      POSB = 24 
+      CALL PLAYRA(POSA,POSB,RULTAB,POS)
+      CALL CHANGE(POS)
+C     CALL TOP
+      WRITE (6,19)
+19    FORMAT (1H ,10HMOVE BY A:)
+      CALL PRNTBD
+20    FORMAT (2A1)
+      IF (ALOCX(1).EQ.7) TFLAG = 1
+C
+C CHECK FOR END OF GAME.
+25    LIMIT = LIMIT + 1
+      IF (LIMIT.EQ.500) TFLAG = 5
+      IF (TFLAG.NE.0) GO TO 70
+C
+C CHECK IF USER REQUESTS BOARD VECTORS.
+      IF (ALOCX(1).NE.9) GO TO 30
+      Q = 5
+26    IF (Q.LT.1) GO TO 27
+      WRITE (6,81) (VECTB(Q,R),R=1,51)
+      Q = Q - 1
+      GO TO 26
+27    WRITE (6,28)
+28    FORMAT (1H ,10HENTER MOVE)
+      READ (5,20) COL1,COL2
+      CALL CONVRT(COL1,COL2,AX,AY)
+      IF (ALOCX(1).EQ.7) TFLAG = 1
+      GO TO 25
+C
+C CHECK IF USER REQUESTS BOARD RESHOW.
+30    IF (ALOCX(1).NE.8) GO TO 32
+      ALOCX(1) = AX
+      ALOCY(1) = AY
+      CALL PRNTBD
+      WRITE (6,28)
+      READ (5,20) COL1,COL2
+      CALL CONVRT(COL1,COL2,AX,AY)
+      IF (ALOCX(1).EQ.7) TFLAG = 1
+      GO TO 25
+C
+C IS USER MOVE LEGAL?
+32    I = BLOCX(1)
+      J = BLOCY(1)
+      Q = ALOCX(1) - AX
+      R = ALOCY(1) - AY
+C IS MOVE ON BOARD?
+      IF (ALOCX(1).GT.5) GO TO 42
+      IF (ALOCX(1).LT.1) GO TO 42
+      IF (ALOCY(1).GT.5) GO TO 42
+      IF (ALOCY(1).LT.1) GO TO 42
+C IS MOVE TO ADJACENT SQUARE?
+      IF (ABS(FLOAT(Q)).GT.1) GO TO 42
+      IF (ABS(FLOAT(R)).GT.1) GO TO 42
+C IS MOVE TO MIDDLE SQUARE?
+      IF (ALOCX(1).EQ.3.AND.ALOCY(1).EQ.3) GO TO 42
+C IS MOVE TO OCCUPIED SQUARE?
+      IF (ALOCX(1).EQ.BLOCX(1).AND.ALOCY(1).EQ.BLOCY(1)) GO TO 42
+C IS MOVE LEGAL FOR RULE TABLE?
+      IF (Q.EQ.RULTAB(I,J,1).AND.R.EQ.RULTAB(I,J,4)) GO TO 45
+      IF (Q.EQ.RULTAB(I,J,2).AND.R.EQ.RULTAB(I,J,5)) GO TO 45
+      IF (Q.EQ.RULTAB(I,J,3).AND.R.EQ.RULTAB(I,J,6)) GO TO 45
+C ONLY LEGAL MOVE NOW IS TO STAY IN PLACE.
+      IF (Q.NE.0.OR.R.NE.0) GO TO 42
+      IF (AX+RULTAB(I,J,1).LE.5.AND.AX+RULTAB(I,J,1).GE.1.AND.
+     $    AY+RULTAB(I,J,4).LE.5.AND.AY+RULTAB(I,J,4).GE.1.AND.
+     $   (AX+RULTAB(I,J,1).NE.3.OR.AY+RULTAB(I,J,4).NE.3).AND.
+     $   (AX+RULTAB(I,J,1).NE.BLOCX(1).OR.AY+RULTAB(I,J,4).NE.
+     $    BLOCY(1))) GO TO 42
+      IF (AX+RULTAB(I,J,2).LE.5.AND.AX+RULTAB(I,J,2).GE.1.AND.
+     $    AY+RULTAB(I,J,5).LE.5.AND.AY+RULTAB(I,J,5).GE.1.AND.
+     $   (AX+RULTAB(I,J,2).NE.3.OR.AY+RULTAB(I,J,5).NE.3).AND.
+     $   (AX+RULTAB(I,J,2).NE.BLOCX(1).OR.AY+RULTAB(I,J,5).NE.
+     $    BLOCY(1))) GO TO 42
+      IF (AX+RULTAB(I,J,3).LE.5.AND.AX+RULTAB(I,J,3).GE.1.AND.
+     $    AY+RULTAB(I,J,6).LE.5.AND.AY+RULTAB(I,J,6).GE.1.AND.
+     $   (AX+RULTAB(I,J,3).NE.3.OR.AY+RULTAB(I,J,6).NE.3).AND.
+     $   (AX+RULTAB(I,J,3).NE.BLOCX(1).OR.AY+RULTAB(I,J,6).NE.
+     $    BLOCY(1))) GO TO 42
+      GO TO 45
+C
+C INFORM THE USER OF THE INVALID MOVE.
+42    WRITE (6,43)
+43    FORMAT (1H ,12HINVALID MOVE)
+      WRITE (6,28)
+      READ (5,20) COL1,COL2
+      CALL CONVRT(COL1,COL2,AX,AY)
+      IF (ALOCX(1).EQ.7) TFLAG = 1
+      GO TO 25
+C
+C THE MOVE IS VALID.  CHECK FOR DEADLOCK.
+45    IF (DEADLK.LT.2) GO TO 46
+      TFLAG = 2
+      GO TO 25
+C
+C CHECK FOR A WIN BY USER.
+46    IF (ALOCX(1).NE.5.OR.ALOCY(1).NE.1) GO TO 47
+      TFLAG = 3
+      GO TO 25
+C
+C CALL MAKEMV TO MAKE THE PROGRAM MOVE. THEN WRITE OUT THE BOARD.
+47    POSB = ((BLOCX(1) - 1) + ((BLOCY(1) - 1) * 5))
+      POSA = ((ALOCX(1) - 1) + ((ALOCY(1) - 1) * 5))
+      CALL PLAYRB(POSA,POSB,RULTAB,POS)
+      Q = ALOCX(1)
+      R = ALOCY(1)
+      CALL CHANGE(POS)
+      BLOCX(1) = ALOCX(1)
+      BLOCY(1) = ALOCY(1)
+      ALOCX(1) = Q
+      ALOCY(1) = R
+C     CALL TOP
+      WRITE (6,17)
+17    FORMAT (1H ,10HMOVE BY B:)     
+      CALL PRNTBD
+C
+C CHECK FOR A WIN BY THE PROGRAM.
+      IF (BLOCX(1).NE.1.OR.BLOCY(1).NE.1) GO TO 48
+      TFLAG = 4
+      GO TO 25
+C
+C CHECK FOR A DEADLOCK.
+48    IF (DEADLK.LT.2) GO TO 49
+      TFLAG = 2
+      GO TO 25
+C
+C GET THE USER NEXT MOVE.
+49    IF (Q.NE.0.OR.R.NE.0) DEADLK = 0
+      AX = ALOCX(1)
+      AY = ALOCY(1)
+      POSB = ((BLOCX(1) - 1) + ((BLOCY(1) - 1) * 5))
+      POSA = ((ALOCX(1) - 1) + ((ALOCY(1) - 1) * 5))
+      CALL PLAYRA(POSA,POSB,RULTAB,POS)
+      CALL CHANGE(POS)
+C     CALL TOP
+      WRITE (6,19)
+      CALL PRNTBD
+      IF (ALOCX(1).EQ.7) TFLAG = 1
+      GO TO 25
+C
+C WRITE THE END OF GAME MESSAGE.
+70    IF (TFLAG.EQ.1) WRITE (6,72)
+      IF (TFLAG.EQ.2) WRITE (6,73)
+      IF (TFLAG.EQ.4) WRITE (6,75)
+      IF (TFLAG.EQ.5) WRITE (6,106)
+      IF (TFLAG.EQ.3) WRITE (6,74)
+72    FORMAT (1H ,13HTERMINATE    )
+73    FORMAT (1H ,13HDEADLOCK     )
+74    FORMAT (1H ,13HA WINS!      )
+75    FORMAT (1H ,13HB WINS!      )
+81    FORMAT (51A1)
+106   FORMAT (1H ,18HMOVE LIMIT REACHED)
+100   STOP
+      END
+      SUBROUTINE CHANGE(POS)
+      COMMON ALOCX(9),ALOCY(9),BLOCX(9),BLOCY(9),
+     1RULTAB(5,5,6),TURN,LVLPTR,VALUE(9),VALDEF(9),
+     2MOVNDX(9),MOVSAV(9),MOVCNT(9),DEADLK,LVLIM
+      INTEGER ALOCX,ALOCY,BLOCX,BLOCY
+      INTEGER RULTAB,TURN,LVLPTR,VALDEF
+      INTEGER MOVNDX,MOVSAV,MOVCNT,DEADLK,LVLIM
+      INTEGER POS
+      INTEGER X,Y,NUM
+      X = 0
+      Y = 0
+      NUM = POS
+10    IF (NUM.LT.5) GO TO 20
+      NUM = NUM - 5
+      Y = Y + 1
+      GO TO 10
+20    X = NUM
+      ALOCX(1) = X + 1
+      ALOCY(1) = Y + 1
+      RETURN
+      END     
+      SUBROUTINE CONVRT(COL1,COL2,AX,AY)
+C
+C THIS SUBROUTINE TRANSLATES THE INPUT VALUES TO A BOARD POSITION.
+C
+      COMMON ALOCX(9),ALOCY(9),BLOCX(9),BLOCY(9),                          LV023
+     1RULTAB(5,5,6),TURN,LVLPTR,VALUE(9),VALDEF(9),
+     2MOVNDX(9),MOVSAV(9),MOVCNT(9),DEADLK,LVLIM
+      INTEGER ALOCX,ALOCY,BLOCX,BLOCY
+      INTEGER RULTAB,TURN,LVLPTR,VALDEF
+      INTEGER MOVNDX,MOVSAV,MOVCNT,DEADLK,LVLIM
+      INTEGER COL1,COL2,AX,AY
+      REAL VALUE
+      INTEGER BL,W,E,N,S,V,R,T,H
+      DATA BL/' '/,W/'W'/,E/'E'/,N/'N'/,S/'S'/,V/'V'/,R/'R'/,T/'T'/
+      DATA H/'H'/
+C
+C CHECK FOR A REQUEST CODE.
+      IF (COL1.NE.T) GO TO 10
+      ALOCX(1) = 7
+      ALOCY(1) = 0
+      GO TO 90
+10    IF (COL1.NE.R) GO TO 20
+      ALOCX(1) = 8
+      ALOCY(1) = 0
+      GO TO 90
+20    IF (COL1.NE.V) GO TO 30
+      ALOCX(1) = 9
+      ALOCY(1) = 0
+      GO TO 90
+C
+C DECODE THE MOVE REQUEST.
+30    IF (COL1.NE.N) GO TO 40
+      IF (COL2.NE.W) GO TO 32
+      ALOCY(1) = AY + 1
+      ALOCX(1) = AX - 1
+      GO TO 90
+32    IF (COL2.NE.E) GO TO 34
+      ALOCY(1) = AY + 1
+      ALOCX(1) = AX + 1
+      GO TO 90
+34    IF (COL2.NE.BL) GO TO 80
+      ALOCY(1) = AY + 1
+      ALOCX(1) = AX
+      GO TO 90
+40    IF (COL1.NE.S) GO TO 60
+      IF (COL2.NE.W) GO TO 42
+      ALOCY(1) = AY - 1
+      ALOCX(1) = AX - 1
+      GO TO 90
+42    IF (COL2.NE.E) GO TO 44
+      ALOCY(1) = AY - 1
+      ALOCX(1) = AX + 1
+      GO TO 90
+44    IF (COL2.NE.BL) GO TO 80
+      ALOCY(1) = AY - 1
+      ALOCX(1) = AX
+      GO TO 90
+60    IF (COL1.NE.W) GO TO 70
+      IF (COL2.NE.BL) GO TO 80
+      ALOCY(1) = AY
+      ALOCX(1) = AX - 1
+      GO TO 90
+70    IF (COL1.NE.E) GO TO 75
+      IF (COL2.NE.BL) GO TO 80
+      ALOCY(1) = AY
+      ALOCX(1) = AX + 1
+      GO TO 90
+75    IF (COL1.NE.H) GO TO 80
+      IF (COL2.NE.BL) GO TO 80
+      ALOCY(1) = AY
+      ALOCX(1) = AX
+      GO TO 90
+80    ALOCX(1) = 3
+      ALOCY(1) = 3
+90    RETURN
+      END
+      SUBROUTINE GAMNUM(COL1,COL2,SHIFT)
+C
+C THIS SUBROUTINE TRANSLATES THE INPUT GAME NUMBER TO A NUMERIC
+C VALUE.
+C
+      COMMON ALOCX(9),ALOCY(9),BLOCX(9),BLOCY(9),                          LV023
+     1RULTAB(5,5,6),TURN,LVLPTR,VALUE(9),VALDEF(9),
+     2MOVNDX(9),MOVSAV(9),MOVCNT(9),DEADLK,LVLIM
+      INTEGER ALOCX,ALOCY,BLOCX,BLOCY
+      INTEGER RULTAB,TURN,LVLPTR,VALDEF
+      INTEGER MOVNDX,MOVSAV,MOVCNT,DEADLK,LVLIM
+      INTEGER COL1,COL2,SHIFT
+      INTEGER K,BL
+      INTEGER ONE,TWO,THREE,FOUR,FIVE
+      INTEGER SIX,SEVEN,EIGHT,NINE
+      DATA BL/' '/
+      DATA ONE/'1'/,TWO/'2'/,THREE/'3'/,FOUR/'4'/,FIVE/'5'/
+      DATA SIX/'6'/,SEVEN/'7'/,EIGHT/'8'/,NINE/'9'/
+C
+      SHIFT = 0
+      IF (COL2.EQ.BL) GO TO 10
+      IF (COL1.EQ.ONE) SHIFT = 10
+      IF (COL1.EQ.TWO) SHIFT = 20
+      K = COL2
+      GO TO 20
+10    K = COL1
+20    IF (K.EQ.ONE) SHIFT = SHIFT + 1
+      IF (K.EQ.TWO) SHIFT = SHIFT + 2
+      IF (K.EQ.THREE) SHIFT = SHIFT + 3
+      IF (K.EQ.FOUR) SHIFT = SHIFT + 4
+      IF (K.EQ.FIVE) SHIFT = SHIFT + 5
+      IF (K.EQ.SIX) SHIFT = SHIFT + 6
+      IF (K.EQ.SEVEN) SHIFT = SHIFT + 7
+      IF (K.EQ.EIGHT) SHIFT = SHIFT + 8
+      IF (K.EQ.NINE) SHIFT = SHIFT + 9
+      SHIFT = SHIFT - 1
+      IF (SHIFT.GT.22) SHIFT = 22
+      RETURN
+      END
+      SUBROUTINE INIT(VECTB,SHIFT)
+C
+C THIS SUBROUTINE INITIALIZES THE RULE TABLE FOR THE GAMES.
+C
+      COMMON ALOCX(9),ALOCY(9),BLOCX(9),BLOCY(9),                          LV023
+     1RULTAB(5,5,6),TURN,LVLPTR,VALUE(9),VALDEF(9),
+     2MOVNDX(9),MOVSAV(9),MOVCNT(9),DEADLK,LVLIM
+      INTEGER ALOCX,ALOCY,BLOCX,BLOCY
+      INTEGER RULTAB,TURN,LVLPTR,VALDEF
+      INTEGER MOVNDX,MOVSAV,MOVCNT,DEADLK,LVLIM
+      INTEGER I,J,K,P,Q,L
+      INTEGER X(3),Y(3)
+      REAL VALUE
+      INTEGER VECTB(5,51),SHIFT
+      INTEGER BL,LP,RP,CM,W,E,N,S,EX
+      DATA BL/' '/,LP/'('/,RP/')'/,CM/','/,W/'W'/,E/'E'/,N/'N'/,S/'S'/
+      DATA EX/'X'/
+C
+C INITIALIZE THE RULE TABLE AND THE BOARD POSITIONS.
+      DEADLK = 0
+      TURN = 1
+      ALOCX(1) = 1
+      ALOCY(1) = 5
+      BLOCX(1) = 5
+      BLOCY(1) = 5
+      RULTAB(1,1,1) = 1
+      RULTAB(1,1,2) = 1
+      RULTAB(1,1,3) = 0
+      RULTAB(1,1,4) = 0
+      RULTAB(1,1,5) = 1
+      RULTAB(1,1,6) = 1
+      RULTAB(2,1,1) = -1
+      RULTAB(2,1,2) = 0
+      RULTAB(2,1,3) = 1
+      RULTAB(2,1,4) = 0
+      RULTAB(2,1,5) = -1
+      RULTAB(2,1,6) = -1
+      RULTAB(3,1,1) = 0
+      RULTAB(3,1,2) = 1
+      RULTAB(3,1,3) = 1
+      RULTAB(3,1,4) = 1
+      RULTAB(3,1,5) = 1
+      RULTAB(3,1,6) = 0
+      RULTAB(4,1,1) = -1
+      RULTAB(4,1,2) = -1
+      RULTAB(4,1,3) = 1
+      RULTAB(4,1,4) = 1
+      RULTAB(4,1,5) = 0
+      RULTAB(4,1,6) = -1
+      RULTAB(5,1,1) = 0
+      RULTAB(5,1,2) = -1
+      RULTAB(5,1,3) = -1
+      RULTAB(5,1,4) = 1
+      RULTAB(5,1,5) = 1
+      RULTAB(5,1,6) = 0
+      RULTAB(1,2,1) = 0
+      RULTAB(1,2,2) = -1
+      RULTAB(1,2,3) = 0
+      RULTAB(1,2,4) = 1
+      RULTAB(1,2,5) = -1
+      RULTAB(1,2,6) = -1
+      RULTAB(2,2,1) = 0
+      RULTAB(2,2,2) = 1
+      RULTAB(2,2,3) = 0
+      RULTAB(2,2,4) = 1
+      RULTAB(2,2,5) = 0
+      RULTAB(2,2,6) = -1
+      RULTAB(3,2,1) = -1
+      RULTAB(3,2,2) = 1
+      RULTAB(3,2,3) = 1
+      RULTAB(3,2,4) = 0
+      RULTAB(3,2,5) = -1
+      RULTAB(3,2,6) = 0
+      RULTAB(4,2,1) = -1
+      RULTAB(4,2,2) = -1
+      RULTAB(4,2,3) = 0
+      RULTAB(4,2,4) = 1
+      RULTAB(4,2,5) = -1
+      RULTAB(4,2,6) = -1
+      RULTAB(5,2,1) = -1
+      RULTAB(5,2,2) = 0
+      RULTAB(5,2,3) = 1
+      RULTAB(5,2,4) = 1
+      RULTAB(5,2,5) = 1
+      RULTAB(5,2,6) = 1
+      RULTAB(1,3,1) = -1
+      RULTAB(1,3,2) = 1
+      RULTAB(1,3,3) = 1
+      RULTAB(1,3,4) = 1
+      RULTAB(1,3,5) = 1
+      RULTAB(1,3,6) = 0
+      RULTAB(2,3,1) = -1
+      RULTAB(2,3,2) = -1
+      RULTAB(2,3,3) = 1
+      RULTAB(2,3,4) = -1
+      RULTAB(2,3,5) = 1
+      RULTAB(2,3,6) = 1
+      RULTAB(4,3,1) = 0
+      RULTAB(4,3,2) = 1
+      RULTAB(4,3,3) = 1
+      RULTAB(4,3,4) = 1
+      RULTAB(4,3,5) = 1
+      RULTAB(4,3,6) = 0
+      RULTAB(5,3,1) = -1
+      RULTAB(5,3,2) = 1
+      RULTAB(5,3,3) = 1
+      RULTAB(5,3,4) = -1
+      RULTAB(5,3,5) = -1
+      RULTAB(5,3,6) = 0
+      RULTAB(1,4,1) = -1
+      RULTAB(1,4,2) = 0
+      RULTAB(1,4,3) = 1
+      RULTAB(1,4,4) = 0
+      RULTAB(1,4,5) = 1
+      RULTAB(1,4,6) = 0
+      RULTAB(2,4,1) = -1
+      RULTAB(2,4,2) = 0
+      RULTAB(2,4,3) = 1
+      RULTAB(2,4,4) = -1
+      RULTAB(2,4,5) = 1
+      RULTAB(2,4,6) = -1
+      RULTAB(3,4,1) = -1
+      RULTAB(3,4,2) = -1
+      RULTAB(3,4,3) = 0
+      RULTAB(3,4,4) = 1
+      RULTAB(3,4,5) = 0
+      RULTAB(3,4,6) = -1
+      RULTAB(4,4,1) = -1
+      RULTAB(4,4,2) = 0
+      RULTAB(4,4,3) = 1
+      RULTAB(4,4,4) = 1
+      RULTAB(4,4,5) = 1
+      RULTAB(4,4,6) = -1
+      RULTAB(5,4,1) = -1
+      RULTAB(5,4,2) = 0
+      RULTAB(5,4,3) = 1
+      RULTAB(5,4,4) = 0
+      RULTAB(5,4,5) = -1
+      RULTAB(5,4,6) = 0
+      RULTAB(1,5,1) = -1
+      RULTAB(1,5,2) = -1
+      RULTAB(1,5,3) = 0
+      RULTAB(1,5,4) = 0
+      RULTAB(1,5,5) = -1
+      RULTAB(1,5,6) = -1
+      RULTAB(2,5,1) = 1
+      RULTAB(2,5,2) = 1
+      RULTAB(2,5,3) = 1
+      RULTAB(2,5,4) = 1
+      RULTAB(2,5,5) = 0
+      RULTAB(2,5,6) = -1
+      RULTAB(3,5,1) = -1
+      RULTAB(3,5,2) = -1
+      RULTAB(3,5,3) = 1
+      RULTAB(3,5,4) = 1
+      RULTAB(3,5,5) = -1
+      RULTAB(3,5,6) = 0
+      RULTAB(4,5,1) = -1
+      RULTAB(4,5,2) = 1
+      RULTAB(4,5,3) = 1
+      RULTAB(4,5,4) = 0
+      RULTAB(4,5,5) = 1
+      RULTAB(4,5,6) = -1
+      RULTAB(5,5,1) = 1
+      RULTAB(5,5,2) = 1
+      RULTAB(5,5,3) = 0
+      RULTAB(5,5,4) = 0
+      RULTAB(5,5,5) = -1
+      RULTAB(5,5,6) = -1
+C
+C SHIFT THE BOARD VECTORS USING THE SHIFT PARM.
+C
+      K = SHIFT
+5     IF (K.EQ.0) GO TO 30
+      X(1) = RULTAB(2,5,1)
+      X(2) = RULTAB(2,5,2)
+      X(3) = RULTAB(2,5,3)
+      Y(1) = RULTAB(2,5,4)
+      Y(2) = RULTAB(2,5,5)
+      Y(3) = RULTAB(2,5,6)
+      I = 3
+      J = 5
+      P = 2
+      Q = 5
+      L = 1
+10    IF (L.GT.21) GO TO 25
+      RULTAB(P,Q,1) = RULTAB(I,J,1)
+      RULTAB(P,Q,2) = RULTAB(I,J,2)
+      RULTAB(P,Q,3) = RULTAB(I,J,3)
+      RULTAB(P,Q,4) = RULTAB(I,J,4)
+      RULTAB(P,Q,5) = RULTAB(I,J,5)
+      RULTAB(P,Q,6) = RULTAB(I,J,6)
+      L = L + 1
+      P = P + 1
+      IF (P.GT.5) Q = Q - 1
+      IF (P.GT.5) P = 1
+      I = I + 1
+      IF (I.GT.5) J = J - 1
+      IF (I.GT.5) I = 1
+      IF (P.NE.5.OR.Q.NE.5) GO TO 12
+      P = 1
+      Q = 4
+12    IF (I.NE.5.OR.J.NE.5) GO TO 13
+      I = 1
+      J = 4
+13    IF (P.NE.3.OR.Q.NE.3) GO TO 14
+      P = 4
+      Q = 3
+14    IF (I.NE.3.OR.J.NE.3) GO TO 15
+      I = 4
+      J = 3
+15    GO TO 10
+25    RULTAB(5,1,1) = X(1)
+      RULTAB(5,1,2) = X(2)
+      RULTAB(5,1,3) = X(3)
+      RULTAB(5,1,4) = Y(1)
+      RULTAB(5,1,5) = Y(2)
+      RULTAB(5,1,6) = Y(3)
+      K = K - 1
+      GO TO 5
+C
+C NOW INITIALIZE THE BOARD VECTOR PRINT TABLE TO REFLECT THE VALUES
+C OF THE RULE TABLE.
+C
+30    Q = 1
+31    IF (Q.GT.5) GO TO 45
+      VECTB(Q,1) = BL
+      P = 2
+      J = 1
+32    IF (J.GT.5) GO TO 40
+      VECTB(Q,P) = LP
+      IF (Q.EQ.3.AND.J.EQ.3) GO TO 38
+      IF (RULTAB(J,Q,1).EQ.0) VECTB(Q,P+2) = BL
+      IF (RULTAB(J,Q,1).EQ.1) VECTB(Q,P+2) = E
+      IF (RULTAB(J,Q,1).EQ.-1) VECTB(Q,P+2) = W
+      IF (RULTAB(J,Q,4).EQ.0) VECTB(Q,P+1) = BL
+      IF (RULTAB(J,Q,4).EQ.1) VECTB(Q,P+1) = N
+      IF (RULTAB(J,Q,4).EQ.-1) VECTB(Q,P+1) = S
+      VECTB(Q,P+3) = CM
+      P = P + 3
+      IF (RULTAB(J,Q,2).EQ.0) VECTB(Q,P+2) = BL
+      IF (RULTAB(J,Q,2).EQ.1) VECTB(Q,P+2) = E
+      IF (RULTAB(J,Q,2).EQ.-1) VECTB(Q,P+2) = W
+      IF (RULTAB(J,Q,5).EQ.0) VECTB(Q,P+1) = BL
+      IF (RULTAB(J,Q,5).EQ.1) VECTB(Q,P+1) = N
+      IF (RULTAB(J,Q,5).EQ.-1) VECTB(Q,P+1) = S
+      VECTB(Q,P+3) = CM
+      P = P + 3
+      IF (RULTAB(J,Q,3).EQ.0) VECTB(Q,P+2) = BL
+      IF (RULTAB(J,Q,3).EQ.1) VECTB(Q,P+2) = E
+      IF (RULTAB(J,Q,3).EQ.-1) VECTB(Q,P+2) = W
+      IF (RULTAB(J,Q,6).EQ.0) VECTB(Q,P+1) = BL
+      IF (RULTAB(J,Q,6).EQ.1) VECTB(Q,P+1) = N
+      IF (RULTAB(J,Q,6).EQ.-1) VECTB(Q,P+1) = S
+      GO TO 39
+38    VECTB(Q,P+1) = EX
+      VECTB(Q,P+2) = EX
+      VECTB(Q,P+3) = EX
+      VECTB(Q,P+4) = EX
+      VECTB(Q,P+5) = EX
+      VECTB(Q,P+6) = EX
+      VECTB(Q,P+7) = EX
+      VECTB(Q,P+8) = EX
+      P = P + 6
+39    J = J + 1
+      VECTB(Q,P+3) = RP
+      P = P + 4
+      GO TO 32
+40    Q = Q + 1
+      GO TO 31
+45    RETURN
+      END
+      SUBROUTINE PRNTBD
+C
+C THIS SUBROUTINE PRINTS THE BOARD.
+C
+      COMMON ALOCX(9),ALOCY(9),BLOCX(9),BLOCY(9),
+     1RULTAB(5,5,6),TURN,LVLPTR,VALUE(9),VALDEF(9),
+     2MOVNDX(9),MOVSAV(9),MOVCNT(9),DEADLK,LVLIM
+      INTEGER ALOCX,ALOCY,BLOCX,BLOCY
+      INTEGER RULTAB,TURN,LVLPTR,VALDEF
+      INTEGER MOVNDX,MOVSAV,MOVCNT,DEADLK,LVLIM
+      REAL VALUE
+      INTEGER I,J,PRLINE(12),A,B,X,BLANK,SLASH
+      DATA A/'A'/,B/'B'/,X/'X'/,BLANK/' '/,SLASH/'|'/
+C
+C PRINT THE BOARD LINES.
+      J = 5
+1     IF (J.EQ.0) GO TO 10
+      DO 2 I=1,11,2
+      PRLINE(I) = BLANK
+2     CONTINUE
+      DO 3 I=2,12,2
+      PRLINE(I) = SLASH
+3     CONTINUE
+      WRITE (6,5)
+      IF (J.EQ.3) PRLINE(7) = X
+5     FORMAT (1H ,10H - - - - -)
+      IF (ALOCY(1).NE.J) GO TO 7
+      PRLINE(ALOCX(1)*2+1) = A
+7     IF (BLOCY(1).NE.J) GO TO 8
+      PRLINE(BLOCX(1)*2+1) = B
+8     WRITE (6,9) (PRLINE(I),I=1,12)
+9     FORMAT (12A1)
+      J = J - 1
+      GO TO 1
+10    WRITE (6,11)
+11    FORMAT (1H ,11HB- - - - -A)
+      RETURN
+      END

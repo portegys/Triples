@@ -1,2 +1,0 @@
-# Triples
-Triples game
